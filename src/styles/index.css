@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ASTRA design tokens. Single source of truth for colour + type.
+   Mirror any change in src/lib/tokens.ts if used from JS/Three. */
+@theme {
+  --color-void: #03040a;
+  --color-deep: #070a12;
+  --color-abyss: #0b1020;
+  --color-ink: #e8ecf4;
+  --color-ink-dim: #9aa3b8;
+  --color-ink-faint: #5d667c;
+  --color-signal: #8fb4ff;
+  --color-hairline: rgb(232 236 244 / 0.12);
+
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  /* The page background lives on <html> only. A background on <body> would paint
+     over the fixed -z-10 star canvas and hide it. */
+  html { background: var(--color-void); color-scheme: dark; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgb(143 180 255 / 0.3); }
+}
+
+@keyframes astra-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes astra-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Custom classes must be layered, otherwise they beat Tailwind utilities (e.g. hover:text-ink). */
+@layer components {
+  /* Scientific label: small, tracked, monospaced. Use for coordinates, scales, indices. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+  /* Quick re-entry for text that swaps while the page scrolls (Chapter 10's timeline). */
+  .hum-in { animation: astra-fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .fade-up { animation: astra-fade-up 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  /* Slow "you are here" beacon. Infinite, so it is switched off (not shortened) for reduced motion. */
+  .pulse-soft { animation: astra-pulse-soft 4.5s ease-in-out 3s infinite; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  /* A 0.01ms infinite loop would strobe, so looping animations are removed outright. */
+  .pulse-soft { animation: none; }
+}
