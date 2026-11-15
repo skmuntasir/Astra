@@ -21,3 +21,5 @@ npm-debug.log*
 
 # Vercel
 .vercel
+
+public/textures/_preview

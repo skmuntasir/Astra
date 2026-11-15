@@ -6,7 +6,7 @@ export const colors = {
   abyss: '#0B1020',
   ink: '#E8ECF4',
   inkDim: '#9AA3B8',
-  inkFaint: '#5D667C',
+  inkFaint: '#7d869c',
   signal: '#8FB4FF',
 } as const
 

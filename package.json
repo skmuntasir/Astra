@@ -1,29 +1,52 @@
 {
-  "name": "astra",
-  "private": true,
+  "name": "astra-v2",
   "version": "0.1.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "textures": "tsx tools/texgen/run.ts && tsx tools/texgen/contactSheet.ts",
+    "textures:preview": "tsx tools/texgen/run.ts --preview",
+    "check:budget": "tsx tools/texgen/checkBudget.ts",
+    "test": "python3 tests/e2e.py",
+    "textures:report": "tsx tools/texgen/report.ts",
+    "textures:globes": "tsx tools/texgen/globes.ts",
+    "test:bh": "tsx tests/bh.physics.test.ts",
+    "test:bh-gpu": "python3 tests/bh_gpu.py",
+    "test:infall": "tsx tests/infall.test.ts && tsx tests/schw.test.ts && tsx tests/guard.test.ts",
+    "test:schw-gpu": "python3 tests/schw_gpu.py",
+    "test:e2e-bh": "python3 tests/e2e_bh.py",
+    "test:sundir": "tsx tests/sundir.test.ts",
+    "test:kerrframe": "tsx tests/kerrframe.test.ts",
+    "test:link": "tsx tests/link.test.ts",
+    "test:content": "tsx tests/content.test.ts",
+    "test:e2e-content": "python3 tests/e2e_content.py 1440x900 /tmp/e2e_content",
+    "test:audio": "python3 tests/audio_levels.py",
+    "test:experience": "python3 tests/e2e_experience.py",
+    "test:experience-app": "python3 tests/e2e_experience.py app"
   },
   "dependencies": {
-    "@react-three/fiber": "^9.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "three": "^0.170.0"
+    "@react-three/fiber": "^9.8.2",
+    "lenis": "^1.3.27",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "three": "^0.170.0",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@tailwindcss/vite": "^4.3.4",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/three": "^0.170.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "tailwindcss": "^4.0.0",
-    "typescript": "~5.6.0",
-    "vite": "^6.0.0"
-  }
+    "@vitejs/plugin-react": "^4.7.0",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.4",
+    "tsx": "^4.23.15",
+    "typescript": "5.6",
+    "vite": "^6.4.5"
+  },
+  "private": true,
+  "type": "module"
 }

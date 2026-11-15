@@ -1,65 +1,63 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-/* ASTRA design tokens. Single source of truth for colour + type.
-   Mirror any change in src/lib/tokens.ts if used from JS/Three. */
-@theme {
-  --color-void: #03040a;
-  --color-deep: #070a12;
-  --color-abyss: #0b1020;
-  --color-ink: #e8ecf4;
-  --color-ink-dim: #9aa3b8;
-  --color-ink-faint: #5d667c;
-  --color-signal: #8fb4ff;
-  --color-hairline: rgb(232 236 244 / 0.12);
-
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+:root {
+  --bg: #02030a;
+  --ink: #eef2fb;
+  --ink-dim: #9aa6bf;
+  --accent: #7fb2ff;
+  --line: rgba(190, 210, 255, 0.22);
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
 }
+html { overscroll-behavior: none; } /* no rubber-band bounce stacked on the smoothed scroll */
+html, body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); margin: 0; }
+body { overflow-x: hidden; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+html.reduced, html.reduced body { overflow: hidden; height: 100svh; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hud-chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.glass { background: rgba(6, 9, 20, 0.55); backdrop-filter: blur(10px); border: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 
-@layer base {
-  /* The page background lives on <html> only. A background on <body> would paint
-     over the fixed -z-10 star canvas and hide it. */
-  html { background: var(--color-void); color-scheme: dark; scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    color: var(--color-ink);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection { background: rgb(143 180 255 / 0.3); }
-}
+/* step 5b: hints */
+@keyframes astra-bob { 0%, 100% { transform: translateY(0); opacity: 0.45; } 50% { transform: translateY(7px); opacity: 1; } }
+@keyframes astra-pulse { 0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.95; } 100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; } }
+.astra-bob { animation: astra-bob 1.9s ease-in-out infinite; }
+.astra-pulse { animation: astra-pulse 1.9s ease-out infinite; }
+html.reduced .astra-bob, html.reduced .astra-pulse { animation: none !important; }
 
-@keyframes astra-pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
+/* opening sequence: interface pieces fade in one after another once the scene has appeared (engine/intro.ts removes .astra-intro) */
+.hud-fade { opacity: 1; transition: opacity 1.8s ease var(--d, 0s); }
+html.astra-intro .hud-fade { opacity: 0; transition: none; }
 
-@keyframes astra-fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* Custom classes must be layered, otherwise they beat Tailwind utilities (e.g. hover:text-ink). */
-@layer components {
-  /* Scientific label: small, tracked, monospaced. Use for coordinates, scales, indices. */
-  .label {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-  /* Quick re-entry for text that swaps while the page scrolls (Chapter 10's timeline). */
-  .hum-in { animation: astra-fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  .fade-up { animation: astra-fade-up 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  /* Slow "you are here" beacon. Infinite, so it is switched off (not shortened) for reduced motion. */
-  .pulse-soft { animation: astra-pulse-soft 4.5s ease-in-out 3s infinite; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  /* A 0.01ms infinite loop would strobe, so looping animations are removed outright. */
-  .pulse-soft { animation: none; }
-}
+/* focus panel: one layout for every object (top bar, name, previous / next, related objects) */
+.fp { display: flex; flex-direction: column; gap: 16px; background: rgba(6, 9, 20, 0.78); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45); }
+.fp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fp-back { display: inline-flex; align-items: center; gap: 8px; padding: 7px 8px 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--ink); font: 500 13px/1 var(--font-ui); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.fp-kbd { font: 10px/1 var(--font-mono); letter-spacing: 0.08em; padding: 3px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-dim); }
+.fp-count { font: 12px/1 var(--font-mono); letter-spacing: 0.12em; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.fp-count b { color: var(--ink); font-weight: 500; }
+.fp-eyebrow { font: 11px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.fp-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.08; margin: 0; }
+.fp-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fp-step { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); color: var(--ink); text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.fp-step-next { text-align: right; align-items: flex-end; }
+.fp-step-dir { font: 10px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.fp-step-name { font: 500 14px/1.2 var(--font-ui); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-step:disabled { opacity: 0.4; cursor: default; }
+.fp-section { display: flex; flex-direction: column; gap: 9px; padding-top: 14px; border-top: 1px solid rgba(190, 210, 255, 0.12); }
+.fp-label { font: 10px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); }
+.fp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fp-chip { font: 500 13px/1 var(--font-ui); padding: 8px 12px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--ink); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.fp-zoom { flex-direction: row; align-items: center; justify-content: space-between; }
+.fp-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.fp-seg button { width: 42px; height: 32px; background: transparent; border: 0; color: var(--ink); font: 400 18px/1 var(--font-ui); cursor: pointer; transition: background 0.15s; }
+.fp-seg button + button { border-left: 1px solid var(--line); }
+.fp-back:hover, .fp-chip:hover, .fp-step:hover:not(:disabled) { background: rgba(127, 178, 255, 0.14); border-color: rgba(127, 178, 255, 0.5); }
+.fp-seg button:hover { background: rgba(127, 178, 255, 0.14); }
+@media (max-width: 639px) { .fp { gap: 12px; } .fp-section { padding-top: 10px; } }

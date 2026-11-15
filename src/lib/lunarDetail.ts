@@ -8,8 +8,8 @@
  *   2. the high-pass of the albedo itself, so the real craters/ridges in the photo also catch the light.
  * The result is an RG tangent-space slope map (equirectangular, row 0 = SOUTH, to match WebGL texture space).
  *
- * Work is time-sliced (≈6 ms per task) so it never costs a dropped frame; the scene fades the detail in
- * when it lands. Deterministic: same seed → same Moon every load.
+ * Work is time-sliced (about 6 ms per task). In ASTRA v2 the PRELOADER runs it (with progress) before the journey
+ * starts, so nothing ever fades in late. Deterministic: same seed → same Moon every load.
  */
 
 export interface LunarDetailParams {
@@ -42,7 +42,7 @@ function rng(seed: number) {
 
 const SLICE_MS = 6
 
-function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
+function* build(p: LunarDetailParams, onP: (f: number) => void): Generator<void, Uint8Array> {
   const { width: W, height: H, lum, lumW, lumH } = p
   const rand = rng(p.seed)
   const h = new Float32Array(W * H) // height in units of the Moon's radius; row 0 = north here
@@ -77,6 +77,7 @@ function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
       t0 = performance.now()
     }
   }
+  onP(0.1)
   const HP = 0.0085 // albedo high-pass → height (Moon radii per unit of luminance)
   for (let y = 0; y < H; y++) {
     const ly = Math.min(lumH - 1, Math.floor((y * lumH) / H)) * lumW
@@ -111,6 +112,7 @@ function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
   }
   yield
 
+  onP(0.15)
   const Rpx = Math.PI / H // one texel along v, in Moon radii
   t0 = performance.now()
   for (let i = 0; i < n; i++) {
@@ -156,6 +158,7 @@ function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
       }
     }
     if ((i & 7) === 7 && over()) {
+      onP(0.15 + 0.5 * (i / n))
       yield
       t0 = performance.now()
     }
@@ -192,6 +195,7 @@ function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
       out[o + 3] = 255
     }
     if ((y & 3) === 3 && over()) {
+      onP(0.65 + 0.35 * (y / H))
       yield
       t0 = performance.now()
     }
@@ -200,8 +204,8 @@ function* build(p: LunarDetailParams): Generator<void, Uint8Array> {
 }
 
 /** Runs the generator in ~6 ms slices. Returns a cancel function. `onDone` receives RGBA bytes (row 0 = south). */
-export function generateLunarDetail(p: LunarDetailParams, onDone: (rgba: Uint8Array) => void): Cancel {
-  const gen = build(p)
+export function generateLunarDetail(p: LunarDetailParams, onDone: (rgba: Uint8Array) => void, onProgress: (f: number) => void = () => {}): Cancel {
+  const gen = build(p, onProgress)
   let dead = false
   let timer = 0
   const run = () => {

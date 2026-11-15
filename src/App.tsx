@@ -1,45 +1,40 @@
-import { lazy, Suspense } from 'react'
-import Navigation from '@/components/layout/Navigation'
-import Hero from '@/components/sections/Hero'
-import ChapterEarth from '@/components/sections/ChapterEarth'
-import ChapterMoon from '@/components/sections/ChapterMoon'
-import ChapterSolarSystem from '@/components/sections/ChapterSolarSystem'
-import ChapterCosmicScale from '@/components/sections/ChapterCosmicScale'
-import ChapterBlackHoles from '@/components/sections/ChapterBlackHoles'
-import ChapterObservatory from '@/components/sections/ChapterObservatory'
-import ChapterStarMap from '@/components/sections/ChapterStarMap'
-import ChapterDeepSpace from '@/components/sections/ChapterDeepSpace'
-import ChapterSearchForLife from '@/components/sections/ChapterSearchForLife'
-import ChapterHumanity from '@/components/sections/ChapterHumanity'
-import JourneyIndex from '@/components/sections/JourneyIndex'
+import { useEffect } from 'react'
+import { Engine } from './engine/Engine'
+import { initScroll } from './engine/scroll'
+import { useStore } from './engine/store'
+import { LoadingScreen, Title, Rail, Beats, Controls, FocusPanel, GateOverlay, Curtain, IntroVeil } from './hud/Hud'
+import { installDebug } from './test/debug'
+import { ScaleTestObjects } from './test/ScaleTest'
+import { PlanetsTest } from './test/Planets'
+import { BlackHoleHud } from './zones/blackhole/Hud'
+import { UniverseHud } from './zones/universe/Hud'
+import { ExperienceTop, SoundFeed, ScrollHint, PlanetHint, LinkSync } from './hud/Experience'
 
-// 3D stack is code-split so the page text paints before Three.js loads.
-const StarField = lazy(() => import('@/components/canvas/StarField'))
+const TEST = new URLSearchParams(location.search).get('test')
 
-export default function App() {
+export function App() {
+  const phase = useStore((s) => s.phase)
+  useEffect(() => { document.documentElement.classList.add('astra-intro'); initScroll(); installDebug() }, [])
   return (
     <>
-      <Suspense fallback={null}>
-        <StarField />
-      </Suspense>
-      <Navigation />
-      <main>
-        <Hero />
-        <ChapterEarth />
-        <ChapterMoon />
-        <ChapterSolarSystem />
-        <ChapterCosmicScale />
-        <ChapterBlackHoles />
-        <ChapterObservatory />
-        <ChapterStarMap />
-        <ChapterDeepSpace />
-        <ChapterSearchForLife />
-        <ChapterHumanity />
-        <JourneyIndex />
-      </main>
-      <footer className="border-t border-hairline px-6 py-10 md:px-10">
-        <p className="label mx-auto max-w-7xl">ASTRA — Observation in progress</p>
-      </footer>
+      <Engine extra={TEST === 'scale' ? <ScaleTestObjects /> : TEST === 'planets' ? <PlanetsTest /> : null} />
+      <IntroVeil />
+      <Title />
+      <Beats />
+      <Rail />
+      <Controls />
+      <FocusPanel />
+      <BlackHoleHud />
+      <UniverseHud />
+      <GateOverlay />
+      <Curtain />
+      <ExperienceTop />
+      <ScrollHint />
+      <PlanetHint />
+      <SoundFeed />
+      <LinkSync />
+      <LoadingScreen />
+      <div className="sr-only" role="status" aria-live="polite">{phase === 'ready' ? 'Journey ready. Scroll to travel.' : ''}</div>
     </>
   )
 }

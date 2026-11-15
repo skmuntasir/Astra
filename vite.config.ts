@@ -1,15 +1,13 @@
-import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
   build: {
-    rollupOptions: {
-      // Keep the 3D stack in its own chunk so first paint stays light.
-      output: { manualChunks: { three: ['three', '@react-three/fiber'] } },
-    },
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: { output: { manualChunks: { three: ['three'] } } },
   },
 })

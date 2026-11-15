@@ -1,8 +1,8 @@
-import { AU, GALAXY, GALAXY_R, LMC, M31, M33, LY, NEAR_STARS, SMC, SUN, UNIVERSE_R, starOffset, type V2 } from '@/lib/cosmicScale'
+import { AU, GALAXY, GALAXY_R, LMC, M31, M33, LY, NEAR_STARS, SMC, SUN, UNIVERSE_R, starOffset, type V2 } from '@/lib/scale'
 import { starTints } from '@/lib/tokens'
 
 /**
- * Procedural point clouds for Chapter 04. Deterministic (seeded), a few milliseconds each, no assets.
+ * Procedural point clouds (ported from the old Cosmic Scale chapter, now with a z coordinate so they can be 3D). Deterministic (seeded), a few milliseconds each, no assets.
  *
  * Each field is in METRES relative to its own origin (`origin` says where in the frame), so float32 is plenty: the
  * scene adds the origin's pixel offset in float64-computed uniforms. Colours are linear 0…1 "display" values
@@ -11,7 +11,7 @@ import { starTints } from '@/lib/tokens'
 export interface Field {
   n: number
   origin: V2
-  pos: Float32Array // x, y, 0 per point
+  pos: Float32Array // x, y, z per point, metres relative to `origin` (z = height above the frame's plane)
   col: Float32Array // r, g, b per point
   size: Float32Array // CSS px
 }
@@ -44,9 +44,10 @@ const WARM = hex(starTints.warm)
 function alloc(n: number, origin: V2): Field {
   return { n, origin, pos: new Float32Array(n * 3), col: new Float32Array(n * 3), size: new Float32Array(n) }
 }
-function put(f: Field, i: number, x: number, y: number, c: ArrayLike<number>, k: number, size: number) {
+function put(f: Field, i: number, x: number, y: number, c: ArrayLike<number>, k: number, size: number, z = 0) {
   f.pos[i * 3] = x
   f.pos[i * 3 + 1] = y
+  f.pos[i * 3 + 2] = z
   f.col[i * 3] = c[0] * k
   f.col[i * 3 + 1] = c[1] * k
   f.col[i * 3 + 2] = c[2] * k
@@ -64,7 +65,7 @@ export function oortField(n: number): Field {
     const z = next() * 2 - 1
     const th = next() * Math.PI * 2
     const k = Math.sqrt(1 - z * z)
-    put(f, i, r * k * Math.cos(th), r * k * Math.sin(th), [0.72, 0.82, 1], 0.32 + 0.2 * next(), 1.2 + 0.7 * next())
+    put(f, i, r * k * Math.cos(th), r * k * Math.sin(th), [0.72, 0.82, 1], 0.32 + 0.2 * next(), 1.2 + 0.7 * next(), r * z)
   }
   return f
 }
@@ -77,7 +78,7 @@ export function neighbourField(n: number): Field {
   let i = 1
   for (const s of NEAR_STARS) {
     const o = starOffset(s)
-    put(f, i++, o[0], o[1], s.color, 0.95, s.size)
+    put(f, i++, o[0], o[1], s.color, 0.95, s.size, Math.sin(s.dec * (Math.PI / 180)) * s.ly * LY)
   }
   while (i < n) {
     // Uniform in a ball of radius 20 ly, projected.
@@ -90,7 +91,7 @@ export function neighbourField(n: number): Field {
       z = next() * 2 - 1
     } while (x * x + y * y + z * z > 1)
     const bright = next() < 0.12
-    put(f, i++, x * 20 * LY, y * 20 * LY, bright ? NEUTRAL : [1, 0.72, 0.55], bright ? 0.7 : 0.4 + 0.2 * next(), bright ? 2.0 : 1.3 + 0.5 * next())
+    put(f, i++, x * 20 * LY, y * 20 * LY, bright ? NEUTRAL : [1, 0.72, 0.55], bright ? 0.7 : 0.4 + 0.2 * next(), bright ? 2.0 : 1.3 + 0.5 * next(), z * 20 * LY)
   }
   return f
 }
@@ -108,6 +109,7 @@ export function galaxyField(n: number): Field {
   const b = Math.tan((12 * Math.PI) / 180)
   const rmax = GALAXY_R / KPC
   const hd = 3.0
+  const zs = 0.3 * KPC // thin-disc scale height ~300 pc
   const norm = 1 - Math.exp(-rmax / hd)
   for (let i = 0; i < n; i++) {
     const u = next()
@@ -115,9 +117,9 @@ export function galaxyField(n: number): Field {
       // Bar: long and thin, warm.
       const bx = gauss() * 1.6 * KPC
       const by = gauss() * 0.55 * KPC
-      put(f, i, bx * cb - by * sb, bx * sb + by * cb, WARM, 0.5, 1.3 + 0.8 * next())
+      put(f, i, bx * cb - by * sb, bx * sb + by * cb, WARM, 0.5, 1.3 + 0.8 * next(), gauss() * 0.35 * KPC)
     } else if (u < 0.28) {
-      put(f, i, gauss() * 0.9 * KPC, gauss() * 0.9 * KPC, WARM, 0.45, 1.3 + 0.7 * next())
+      put(f, i, gauss() * 0.9 * KPC, gauss() * 0.9 * KPC, WARM, 0.45, 1.3 + 0.7 * next(), gauss() * 0.9 * KPC)
     } else {
       const r = Math.max(2.2, -hd * Math.log(1 - next() * norm))
       const arm = Math.floor(next() * 4)
@@ -129,9 +131,9 @@ export function galaxyField(n: number): Field {
       const y = r * KPC * Math.sin(th)
       if (inArm) {
         const hot = next() < 0.04
-        put(f, i, x, y, hot ? NEUTRAL : COOL, hot ? 0.95 : 0.38 + 0.2 * next(), hot ? 2.5 : 1.2 + 0.9 * next())
+        put(f, i, x, y, hot ? NEUTRAL : COOL, hot ? 0.95 : 0.38 + 0.2 * next(), hot ? 2.5 : 1.2 + 0.9 * next(), gauss() * zs * 0.5)
       } else {
-        put(f, i, x, y, [0.95, 0.9, 0.84], 0.2 + 0.1 * next(), 1.2 + 0.5 * next())
+        put(f, i, x, y, [0.95, 0.9, 0.84], 0.2 + 0.1 * next(), 1.2 + 0.5 * next(), gauss() * zs)
       }
     }
   }
