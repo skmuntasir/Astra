@@ -39,7 +39,7 @@ registerZone({
     { t: 1, target: [6, 0.5, 0], dist: 14, azim: 62, elev: 12, fov: 35 },
   ],
   beats: [
-    { id: 'hero', style: 'hero', kicker: 'ASTRA', title: 'WE ARE HERE.', body: 'Scroll. The camera never cuts.', w: [-0.02, 0, 0.18, 0.3], side: 'left' },
+    { id: 'hero', style: 'hero', kicker: 'ASTRA', title: 'WE ARE\nHERE.', body: 'Scroll. The camera never cuts.', w: [-0.02, 0, 0.18, 0.3], side: 'left' },
     { id: 'earth-1', title: 'Everyone you have ever known lived on this.', body: 'Radius 6,371 km. A thin blue edge of air, and the dark behind it.', w: [0.34, 0.44, 0.62, 0.74], side: 'left' },
     { id: 'earth-2', title: 'Now, pull back.', w: [0.8, 0.88, 0.96, 1.0], side: 'center' },
   ],

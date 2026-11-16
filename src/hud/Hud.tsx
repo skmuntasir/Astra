@@ -10,6 +10,8 @@ import { infoFor } from '@/lib/focusData'
 import { MOON_SPEEDUP } from '@/zones/solar/satellites'
 import { SPIN_SPEEDUP } from '@/zones/solar/bodies'
 import { setMotion } from '@/engine/scroll'
+import { enterNow } from '@/engine/enter'
+import { setSound } from '@/lib/audio/sound'
 import { setPref, needsReload, resolveSettings, type TierPref } from '@/engine/quality'
 import { formatLength } from '@/lib/scale'
 
@@ -29,6 +31,7 @@ export function LoadingScreen() {
   const p = useStore((s) => s.progress)
   const label = useStore((s) => s.progressLabel)
   const error = useStore((s) => s.error)
+  const awaitEnter = useStore((s) => s.awaitEnter)
   const [gone, setGone] = useState(false)
   useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [phase])
   // the opening sequence starts once the loading screen has begun to lift (see engine/intro.ts)
@@ -45,7 +48,14 @@ export function LoadingScreen() {
       <div className="mt-8 h-[2px] w-[min(320px,70vw)] overflow-hidden" style={{ background: 'var(--line)' }}>
         <div id="load-bar" style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .2s linear' }} />
       </div>
-      <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : `${label} · ${pct}%`}</div>
+      {awaitEnter && phase !== 'error' ? (
+        <button type="button" autoFocus data-testid="enter" onClick={() => { setSound(true); enterNow() }} className="hud-chip glass mt-6 rounded px-6 py-2.5" style={{ letterSpacing: '0.3em', color: 'var(--ink)' }}>
+          Enter
+        </button>
+      ) : (
+        <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : `${label} · ${pct}%`}</div>
+      )}
+      {awaitEnter && phase !== 'error' && <div className="hud-chip mt-3" style={{ opacity: 0.7 }}>Sound on</div>}
     </div>
   )
 }
@@ -125,7 +135,7 @@ export function Beats() {
         <div key={b.id} ref={(el) => { refs.current[i] = el }} data-beat={b.id} className={isLong(b) ? 'absolute px-11 sm:px-14' : 'absolute px-6 sm:px-14'}
           style={{ top: b.style === 'hero' ? '50%' : '58%', transform: 'translateY(-50%)', left: b.side === 'center' ? '50%' : 0, textAlign: b.side === 'center' ? 'center' : 'left', width: isLong(b) ? 'min(980px, 100%)' : 'min(640px, 100%)', marginLeft: b.side === 'center' ? (isLong(b) ? 'calc(min(980px,100%) / -2)' : 'calc(min(640px,100%) / -2)') : 0, visibility: 'hidden' }}>
           {b.kicker && <div className="hud-chip mb-3">{b.kicker}</div>}
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)' }}>{b.title}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)', whiteSpace: 'pre-line' }}>{b.title}</h2>
         </div>
       ))}
     </div>

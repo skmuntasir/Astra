@@ -99,7 +99,7 @@ export function setSound(on: boolean, persist = true) {
   emit()
 }
 /** Called once the journey is ready: start the sound without waiting for a tap where the browser allows it (otherwise the first gesture does it). */
-export function autoplaySound() { if (sound.wanted && !sound.started) void start(true) }
+export async function autoplaySound(): Promise<boolean> { if (sound.wanted && !sound.started) await start(true); return sound.playing }
 /** the button and the M key: audible -> mute; anything else (muted, or waiting for the first gesture) -> sound on */
 export const toggleSound = () => setSound(!sound.playing)
 

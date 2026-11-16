@@ -41,7 +41,8 @@ export function probeGpu(): string {
 
 export function detectTier(): Tier {
   if (typeof document === 'undefined') return 'high' // node (tests)
-  const gpu = probeGpu()
+  // the throw-away WebGL context is only needed on a computer (to spot software rendering); on a phone an extra context on the GPU is just a risk
+  const gpu = isMobile() ? 'unknown' : probeGpu()
   if (/swiftshader|llvmpipe|software|basic render/i.test(gpu)) return 'low'
   const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8
   const cores = navigator.hardwareConcurrency ?? 4

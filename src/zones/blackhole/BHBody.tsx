@@ -133,12 +133,29 @@ export function BHBody() {
   )
 }
 
+// Touch screens: a tap on a page that is still gliding (finger flick momentum) is swallowed by the browser, it only stops the glide, so the choice's
+// buttons needed two taps. On a touch screen the choice therefore opens only when the finger is up and the page has been still for a moment.
+const touch = { down: false, lastScroll: 0, on: false }
+function watchTouch() {
+  if (touch.on || typeof window === 'undefined') return
+  touch.on = true
+  const up = () => { touch.down = false }
+  window.addEventListener('touchstart', () => { touch.down = true }, { passive: true })
+  window.addEventListener('touchend', up, { passive: true })
+  window.addEventListener('touchcancel', up, { passive: true })
+  window.addEventListener('scroll', () => { touch.lastScroll = performance.now() }, { passive: true })
+}
+const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+const pageStill = () => !coarse() || (!touch.down && performance.now() - touch.lastScroll > 250)
+
 function watchGate(ap: { t0: number; t1: number }, T: number, tmp: { armed: boolean }) {
   const s = st()
   if (cam.override) return
+  watchTouch()
   const local = (T - ap.t0) / (ap.t1 - ap.t0)
   if (local < 0.85) tmp.armed = true
   if (!tmp.armed || local < GATE_FROM || s.gate || s.focusPhase !== 'idle' || s.phase !== 'ready' || timeline.frozen) return
+  if (!pageStill()) return // touch: wait for the finger to lift and the glide to end (checked again next frame)
   tmp.armed = false
   void choiceGate.open({
     id: 'bh-fall', title: 'Fall into the black hole?', note: 'Simulation · the fall uses a non-rotating simplification',
