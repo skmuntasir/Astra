@@ -32,11 +32,12 @@ export const subscribeSound = (l: Listener) => { listeners.add(l); return () => 
 export const soundSnapshot = () => `${sound.wanted ? 1 : 0}${sound.playing ? 1 : 0}`
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+// Every new visit starts with the sound ON (a mute lasts for this tab's session only), except under prefers-reduced-motion.
 function readPref(): boolean {
-  try { const v = localStorage.getItem(SOUND_KEY); if (v === 'on') return true; if (v === 'off') return false } catch { /* storage blocked */ }
+  try { if (sessionStorage.getItem(SOUND_KEY) === 'off') return false } catch { /* storage blocked */ }
   return !reduced()
 }
-function writePref(on: boolean) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch { /* storage blocked */ } }
+function writePref(on: boolean) { try { if (on) sessionStorage.removeItem(SOUND_KEY); else sessionStorage.setItem(SOUND_KEY, 'off') } catch { /* storage blocked */ } }
 
 let timer: ReturnType<typeof setTimeout> | null = null
 function suspendSoon(ms: number) {
@@ -44,7 +45,7 @@ function suspendSoon(ms: number) {
   timer = setTimeout(() => { timer = null; if (!sound.wanted || document.hidden) void sound.ctx?.suspend().catch(() => {}) }, ms)
 }
 
-async function start() {
+async function start(auto = false) {
   if (sound.started || typeof window === 'undefined') return
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!AC) return
@@ -56,7 +57,12 @@ async function start() {
     sound.ctx = ctx
     sound.amb = createAmbient(ctx)
     if (sound.haveMood) sound.amb.set(sound.mood, ctx.currentTime, 0.05) // start already on the right mood (no glide from a default)
-    await ctx.resume()
+    if (auto) {
+      // no gesture yet: browsers that allow autoplay start right away; the others keep the context suspended and the first tap / click / key resumes it
+      void ctx.resume().catch(() => { /* blocked until a gesture */ })
+      await new Promise((r) => setTimeout(r, 300))
+      if (ctx.state !== 'running') { emit(); return }
+    } else await ctx.resume()
     sound.amb.fade(MASTER_GAIN, ctx.currentTime, 1.4) // slow fade-in from silence
     sound.playing = true
   } catch (e) {
@@ -92,6 +98,8 @@ export function setSound(on: boolean, persist = true) {
   if (on) { if (!sound.started) void start(); else if (!sound.playing) void resume() } else { fadeOutAndSuspend() }
   emit()
 }
+/** Called once the journey is ready: start the sound without waiting for a tap where the browser allows it (otherwise the first gesture does it). */
+export function autoplaySound() { if (sound.wanted && !sound.started) void start(true) }
 /** the button and the M key: audible -> mute; anything else (muted, or waiting for the first gesture) -> sound on */
 export const toggleSound = () => setSound(!sound.playing)
 
@@ -123,9 +131,10 @@ export function installSound(): () => void {
     const t = e.target as HTMLElement | null
     if (t?.closest?.('[data-sound-button]')) return // the button handles its own click (it may be a mute)
     if (e instanceof KeyboardEvent && (e.key === 'm' || e.key === 'M' || e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta')) return
-    if (sound.wanted && !sound.started) void start()
+    if (!sound.wanted || sound.playing) return
+    if (!sound.started) void start(); else void resume() // started but still suspended (autoplay was blocked): resume inside this gesture
   }
-  const gestures: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'touchend', 'click']
+  const gestures: Array<keyof WindowEventMap> = ['pointerdown', 'pointerup', 'keydown', 'touchend', 'click']
   for (const g of gestures) window.addEventListener(g, onGesture, true)
   const onVis = () => {
     if (document.hidden) { if (sound.playing) fadeOutAndSuspend() } else if (sound.wanted && sound.started && !sound.playing) void resume()

@@ -348,12 +348,15 @@ export function GateOverlay() {
   useEffect(() => { if (g) first.current?.focus() }, [g])
   if (!g) return null
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(2,3,10,.55)' }} role="dialog" aria-modal="true" aria-labelledby="gate-title" data-testid="gate">
+    <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(2,3,10,.55)', touchAction: 'none' }} role="dialog" aria-modal="true" aria-labelledby="gate-title" data-testid="gate">
       <div className="glass rounded-xl p-8 text-center max-sm:p-5" style={{ width: 'min(520px,90vw)' }}>
         <h2 id="gate-title" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(1.5rem,5vw,2rem)', margin: '0 0 22px' }}>{g.title}</h2>
         <div className="flex justify-center gap-3">
           {g.options.map((o, i) => (
-            <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)} className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)' }}>{o.label}</button>
+            <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)}
+              // a finger acts on release (touchend) so one tap is enough even while the page is still settling; preventDefault stops the duplicate click
+              onTouchEnd={(e) => { e.preventDefault(); choiceGate.choose(o.id) }}
+              className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)', touchAction: 'manipulation' }}>{o.label}</button>
           ))}
         </div>
       </div>

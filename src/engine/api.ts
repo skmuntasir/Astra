@@ -263,6 +263,9 @@ export const choiceGate = {
   open(spec: GateSpec): Promise<GateOption> {
     timeline.frozen = true
     lock()
+    // The choice usually opens while a touch scroll is still gliding (momentum). On a phone the first tap then only stops that glide and no click
+    // reaches the button, so it needed two taps. A programmatic scroll to the current position ends the glide at once.
+    try { window.scrollTo({ top: window.scrollY, left: 0, behavior: 'instant' as ScrollBehavior }) } catch { /* old browser: harmless */ }
     useStore.setState({ gate: spec })
     return new Promise((res) => { gateResolve = res })
   },

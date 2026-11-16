@@ -103,7 +103,7 @@ export const putTexture = (id: string, t: THREE.Texture) => textures.set(id, t)
 export const putExtra = (id: string, t: THREE.Texture) => extra.set(id, t)
 export const allTextures = () => [...textures.values(), ...extra.values()]
 
-export function makeTexture(bmp: ImageBitmap, a: AssetEntry, anisotropy: number): THREE.Texture {
+export function makeTexture(bmp: ImageBitmap | HTMLCanvasElement, a: AssetEntry, anisotropy: number): THREE.Texture {
   const t = new THREE.Texture(bmp as unknown as HTMLImageElement)
   t.flipY = false // the bitmap was decoded already flipped
   t.colorSpace = a.colorSpace === 'srgb' ? THREE.SRGBColorSpace : THREE.NoColorSpace

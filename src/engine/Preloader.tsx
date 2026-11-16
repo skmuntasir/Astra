@@ -32,7 +32,8 @@ export function Preloader() {
         report(base, 'Compiling shaders')
         cam.solo = new Set(allObjects().map((o) => o.id))
         await frames(2)
-        await gl.compileAsync(scene, camera)
+        // parallel shader compile can fail to report completion on some Android GPU drivers: never wait for it more than 12 s (shaders then compile on first use)
+        await Promise.race([gl.compileAsync(scene, camera).catch(() => { /* compiled on first use */ }), new Promise<void>((r) => setTimeout(r, 12000))])
         report(base + W.warm * 0.4, 'Compiling shaders')
         // one warm-up render per DISTINCT (timeline, visible object set): the 6 infall stages show the same object, so they are warmed once, not six times.
         // The first one gets 2 frames (first use of every pipeline), the rest 1.
@@ -51,6 +52,7 @@ export function Preloader() {
         cam.override = null
         timeline.snap(0)
         report(1, 'Ready')
+        document.documentElement.dataset.astraReady = '1'
         await frames(2)
         useStore.setState({ phase: 'ready' })
       } catch (e) {
