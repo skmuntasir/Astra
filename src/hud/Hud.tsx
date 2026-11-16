@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type TouchEvent as RTouchEvent } from 'react'
 import { useStore, st } from '@/engine/store'
 import { ranges, getObject, type Beat } from '@/engine/journey'
 import { cam } from '@/engine/world'
@@ -9,9 +9,8 @@ import { groupOf, neighbour } from '@/engine/focusGroups'
 import { infoFor } from '@/lib/focusData'
 import { MOON_SPEEDUP } from '@/zones/solar/satellites'
 import { SPIN_SPEEDUP } from '@/zones/solar/bodies'
-import { setMotion } from '@/engine/scroll'
-import { enterNow } from '@/engine/enter'
-import { setSound } from '@/lib/audio/sound'
+import { setMotion, lock, unlock } from '@/engine/scroll'
+import { sound, setSound, subscribeSound, soundSnapshot } from '@/lib/audio/sound'
 import { setPref, needsReload, resolveSettings, type TierPref } from '@/engine/quality'
 import { formatLength } from '@/lib/scale'
 
@@ -31,31 +30,42 @@ export function LoadingScreen() {
   const p = useStore((s) => s.progress)
   const label = useStore((s) => s.progressLabel)
   const error = useStore((s) => s.error)
-  const awaitEnter = useStore((s) => s.awaitEnter)
   const [gone, setGone] = useState(false)
-  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [phase])
+  // Sound on from the first moment. Browsers (iPhone above all) only let audio start from a real tap, never from a scroll. So when the journey is
+  // ready and the sound could not start by itself, the loading screen waits for ONE tap (which starts the sound) and then lifts as before.
+  useSyncExternalStore(subscribeSound, soundSnapshot)
+  const [checked, setChecked] = useState(false)
+  const [tapped, setTapped] = useState(false)
+  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setChecked(true), 450); return () => clearTimeout(t) } }, [phase]) // autoplaySound() has had its turn
+  const needsTap = sound.wanted && !sound.playing && typeof navigator !== 'undefined' && !navigator.webdriver
+  const waiting = phase === 'ready' && (!checked || (needsTap && !tapped))
+  const go = phase === 'ready' && !waiting
+  useEffect(() => { if (phase === 'ready' && checked && needsTap && !tapped) { lock(); return () => unlock() } }, [phase, checked, needsTap, tapped])
+  const begin = () => { if (tapped) return; setSound(true); setTapped(true) }
+  useEffect(() => {
+    if (!(phase === 'ready' && checked && needsTap && !tapped)) return
+    const onKey = (e: KeyboardEvent) => { if (!e.ctrlKey && !e.metaKey && !e.altKey) begin() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase, checked, needsTap, tapped])
+  useEffect(() => { if (go) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [go])
   // the opening sequence starts once the loading screen has begun to lift (see engine/intro.ts)
   useEffect(() => {
-    if (phase !== 'ready') return
+    if (!go) return
     const h = setTimeout(startIntro, st().motion === 'reduced' ? 100 : 450)
     return () => clearTimeout(h)
-  }, [phase])
+  }, [go])
   if (gone) return null
   const pct = Math.round(p * 100)
+  const askTap = phase === 'ready' && checked && needsTap && !tapped
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: phase === 'ready' ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: phase === 'ready' ? 'none' : 'auto' }} role="status" aria-live="polite">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: go ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: go ? 'none' : 'auto', touchAction: 'none', cursor: askTap ? 'pointer' : undefined }} role="status" aria-live="polite"
+      onClick={askTap ? begin : undefined} onTouchEnd={askTap ? (e) => { if (e.cancelable) e.preventDefault(); begin() } : undefined}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,6vw,3.5rem)', letterSpacing: '0.3em' }}>ASTRA</div>
       <div className="mt-8 h-[2px] w-[min(320px,70vw)] overflow-hidden" style={{ background: 'var(--line)' }}>
         <div id="load-bar" style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .2s linear' }} />
       </div>
-      {awaitEnter && phase !== 'error' ? (
-        <button type="button" autoFocus data-testid="enter" onClick={() => { setSound(true); enterNow() }} className="hud-chip glass mt-6 rounded px-6 py-2.5" style={{ letterSpacing: '0.3em', color: 'var(--ink)' }}>
-          Enter
-        </button>
-      ) : (
-        <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : `${label} · ${pct}%`}</div>
-      )}
-      {awaitEnter && phase !== 'error' && <div className="hud-chip mt-3" style={{ opacity: 0.7 }}>Sound on</div>}
+      <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : askTap ? 'Tap to begin · sound on' : `${label} · ${pct}%`}</div>
     </div>
   )
 }
@@ -135,7 +145,7 @@ export function Beats() {
         <div key={b.id} ref={(el) => { refs.current[i] = el }} data-beat={b.id} className={isLong(b) ? 'absolute px-11 sm:px-14' : 'absolute px-6 sm:px-14'}
           style={{ top: b.style === 'hero' ? '50%' : '58%', transform: 'translateY(-50%)', left: b.side === 'center' ? '50%' : 0, textAlign: b.side === 'center' ? 'center' : 'left', width: isLong(b) ? 'min(980px, 100%)' : 'min(640px, 100%)', marginLeft: b.side === 'center' ? (isLong(b) ? 'calc(min(980px,100%) / -2)' : 'calc(min(640px,100%) / -2)') : 0, visibility: 'hidden' }}>
           {b.kicker && <div className="hud-chip mb-3">{b.kicker}</div>}
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)', whiteSpace: 'pre-line' }}>{b.title}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)', whiteSpace: b.id === 'hero' ? 'pre-line' : undefined }}>{b.id === 'hero' ? b.title.replace(/ (\S+)$/, '\n$1') : b.title /* the opening title always breaks before its last word ("WE ARE" / "HERE."), on a phone as on a big screen */}</h2>
         </div>
       ))}
     </div>
@@ -355,8 +365,20 @@ export function FocusPanel() {
 export function GateOverlay() {
   const g = useStore((s) => s.gate)
   const first = useRef<HTMLButtonElement>(null)
-  useEffect(() => { if (g) first.current?.focus() }, [g])
+  const touch = useRef<{ id: string; x: number; y: number } | null>(null)
+  useEffect(() => { if (g) first.current?.focus({ preventScroll: true }) }, [g])
   if (!g) return null
+  // A finger acts on its own release. A tap that lands while the page is still gliding from the scroll can end as a touchcancel instead of a
+  // touchend, so a cancel with (almost) no movement counts as the tap too: one tap is enough. preventDefault stops the duplicate click.
+  const down = (id: string) => (e: RTouchEvent) => { const t = e.touches[0]; touch.current = t ? { id, x: t.clientX, y: t.clientY } : null }
+  const up = (id: string) => (e: RTouchEvent) => {
+    const start = touch.current
+    touch.current = null
+    const t = e.changedTouches[0]
+    if (start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 14) return // it was a drag, not a tap
+    if (e.cancelable) e.preventDefault()
+    choiceGate.choose(id)
+  }
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(2,3,10,.55)', touchAction: 'none' }} role="dialog" aria-modal="true" aria-labelledby="gate-title" data-testid="gate">
       <div className="glass rounded-xl p-8 text-center max-sm:p-5" style={{ width: 'min(520px,90vw)' }}>
@@ -364,8 +386,7 @@ export function GateOverlay() {
         <div className="flex justify-center gap-3">
           {g.options.map((o, i) => (
             <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)}
-              // a finger acts on release (touchend) so one tap is enough even while the page is still settling; preventDefault stops the duplicate click
-              onTouchEnd={(e) => { e.preventDefault(); choiceGate.choose(o.id) }}
+              onTouchStart={down(o.id)} onTouchEnd={up(o.id)} onTouchCancel={up(o.id)}
               className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)', touchAction: 'manipulation' }}>{o.label}</button>
           ))}
         </div>

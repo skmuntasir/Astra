@@ -7,8 +7,6 @@ import { ranges, getBranchIds, allObjects } from './journey'
 import { evalPose } from './path'
 import { cam } from './world'
 import { timeline } from './timeline'
-import { sound, autoplaySound } from '@/lib/audio/sound'
-import { waitForEnter } from './enter'
 
 const frames = (n: number) => new Promise<void>((res) => { const f = (i: number) => (i <= 0 ? res() : requestAnimationFrame(() => f(i - 1))); f(n) })
 
@@ -56,9 +54,6 @@ export function Preloader() {
         report(1, 'Ready')
         document.documentElement.dataset.astraReady = '1'
         await frames(2)
-        // sound ON from the first moment: try to start it now; if the browser blocks it (no tap yet), ask for one tap on the loading screen (automated tests skip it)
-        const playing = await autoplaySound().catch(() => false)
-        if (sound.wanted && !playing && !navigator.webdriver) await waitForEnter()
         useStore.setState({ phase: 'ready' })
       } catch (e) {
         console.error(e)

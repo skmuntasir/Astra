@@ -21,20 +21,7 @@
           d.textContent = 'ASTRA could not start: ' + msg + '\n' + navigator.userAgent
           ;(document.body || document.documentElement).appendChild(d)
         }
-        function detail(e) {
-          var er = e.error, out = ''
-          try {
-            if (er === undefined || er === null) out = '\n[no error object]'
-            else {
-              out = '\n[' + Object.prototype.toString.call(er) + ' name=' + (er.name || '') + ' ctor=' + ((er.constructor && er.constructor.name) || '') + ' message=' + (er.message || '') + ']'
-              if (er.stack) out += '\n' + String(er.stack).split('\n').slice(0, 6).join('\n')
-            }
-            var c = document.createElement('canvas')
-            out += '\nwebgl2=' + !!c.getContext('webgl2') + ' mem=' + (navigator.deviceMemory || '?') + ' cores=' + (navigator.hardwareConcurrency || '?')
-          } catch (x) { /* diagnostics only */ }
-          return out
-        }
-        window.addEventListener('error', function (e) { show((e.message || 'error') + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno : '') + detail(e)) })
+        window.addEventListener('error', function (e) { show((e.message || 'error') + (e.filename ? ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno : '')) })
         window.addEventListener('unhandledrejection', function (e) { last = String((e.reason && e.reason.message) || e.reason) })
         setTimeout(function () { if (last) show(last) }, 25000)
       })()

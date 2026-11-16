@@ -24,8 +24,6 @@ interface State {
   progressLabel: string
   error: string | null
   assetsReady: boolean
-  /** loading is finished but the browser still blocks sound: the loading screen asks for one tap (that tap starts the sound) */
-  awaitEnter: boolean
   settings: TierSettings
   pref: TierPref
   motion: 'full' | 'reduced'
@@ -47,7 +45,6 @@ export const useStore = create<State>((set) => ({
   progressLabel: 'Starting',
   error: null,
   assetsReady: false,
-  awaitEnter: false,
   settings: resolveSettings(),
   pref: getPref(),
   motion: typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full',
