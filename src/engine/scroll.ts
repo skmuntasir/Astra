@@ -57,6 +57,31 @@ export const stillOf = (index: number) => {
 export const raf = (time: number) => lenis?.raf(time)
 export const lock = () => lenis?.stop()
 export const unlock = () => lenis?.start()
+
+/**
+ * Hold the scroll for a modal choice (the black-hole gate). On a touch screen, `lenis.stop()` puts overflow:hidden on <html>, and phone browsers
+ * (iOS Safari above all, also Android Chrome while the address bar is moving) then shift or reset the scroll position. The choice came out at the
+ * wrong place: "No" threw the camera back to the start, "Yes" saved a wrong spot to return to. So on touch screens the page keeps its overflow
+ * (the full-screen overlay already blocks touches and the scroll handler ignores everything while the gate is open) and the exact scroll position
+ * is remembered and put back on release. On a mouse/keyboard device nothing changes.
+ */
+const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+let held: { y: number; soft: boolean } | null = null
+export function holdScroll() {
+  const y = scrollY()
+  const soft = coarse()
+  held = { y, soft }
+  if (!soft) lenis?.stop()
+}
+export function releaseScroll(restore: boolean) {
+  const h = held
+  held = null
+  lenis?.start()
+  if (!h || !h.soft || !restore) return
+  if (Math.abs(window.scrollY - h.y) > 1) { window.scrollTo(0, h.y); lenis?.scrollTo(h.y, { immediate: true, force: true }) }
+}
+/** the scroll position remembered when the hold began (null when not held) */
+export const heldY = () => held?.y ?? null
 export const scrollY = () => (lenis ? lenis.scroll : window.scrollY)
 export const scrollLimit = () => lenis?.limit ?? 1
 
@@ -72,7 +97,7 @@ export function scrollToT(T: number, cut: boolean) {
 
 /** Branch support: remember the exact main scroll position, switch the page to the branch height, and back. */
 export function enterBranchScroll(id: string) {
-  saved.push({ y: scrollY(), id: st().timelineId })
+  saved.push({ y: heldY() ?? scrollY(), id: st().timelineId })
   useStore.setState({ timelineId: id })
   if (st().motion === 'full' && spacer) {
     spacer.style.height = `${totalBudget(id) + 100}svh`

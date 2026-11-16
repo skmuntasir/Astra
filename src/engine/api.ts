@@ -3,7 +3,7 @@ import { neighbour, groupOf } from './focusGroups'
 import { cam } from './world'
 import { st, useStore, type GateOption, type GateSpec } from './store'
 import { timeline } from './timeline'
-import { lock, unlock, scrollToT, scrollY, scrollLimit, enterBranchScroll, exitBranchScroll, stillOf } from './scroll'
+import { lock, unlock, holdScroll, releaseScroll, scrollToT, scrollY, scrollLimit, enterBranchScroll, exitBranchScroll, stillOf } from './scroll'
 import type { Pose } from './path'
 
 /**
@@ -262,7 +262,7 @@ let gateResolve: ((o: GateOption) => void) | null = null
 export const choiceGate = {
   open(spec: GateSpec): Promise<GateOption> {
     timeline.frozen = true
-    lock()
+    holdScroll()
     // The choice usually opens while a touch scroll is still gliding (momentum). On a phone the first tap then only stops that glide and no click
     // reaches the button, so it needed two taps. A programmatic scroll to the current position ends the glide at once.
     try { window.scrollTo({ top: window.scrollY, left: 0, behavior: 'instant' as ScrollBehavior }) } catch { /* old browser: harmless */ }
@@ -275,13 +275,19 @@ export const choiceGate = {
     if (!g || !opt) return
     useStore.setState({ gate: null })
     timeline.frozen = false
-    unlock()
-    if (opt.branch) enterBranch(opt.branch)
-    else if (opt.gotoT !== undefined) scrollToT(opt.gotoT, false)
+    if (opt.branch) {
+      // enter the branch while the hold still remembers the exact gate position (enterBranchScroll saves it for Return), then let the page go
+      // WITHOUT restoring that position: the branch starts at its own top
+      enterBranch(opt.branch)
+      releaseScroll(false)
+    } else {
+      releaseScroll(true) // "No": put the page back exactly where it was, then carry on
+      if (opt.gotoT !== undefined) scrollToT(opt.gotoT, false)
+    }
     gateResolve?.(opt)
     gateResolve = null
   },
-  cancel() { if (st().gate) { useStore.setState({ gate: null }); timeline.frozen = false; unlock() } },
+  cancel() { if (st().gate) { useStore.setState({ gate: null }); timeline.frozen = false; releaseScroll(true) } },
 }
 
 // ---------------- branches ----------------

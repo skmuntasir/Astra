@@ -11,9 +11,13 @@
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
 }
-html { overscroll-behavior: none; } /* no rubber-band bounce stacked on the smoothed scroll */
+/* no rubber-band bounce stacked on the smoothed scroll; overflow-anchor: the browser must never nudge the scroll when the page height changes (entering / leaving the fall) */
+html { overscroll-behavior: none; overflow-anchor: none; }
 html, body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); margin: 0; }
-body { overflow-x: hidden; }
+body { overflow-x: hidden; overflow-anchor: none; }
+#scroll-space { overflow-anchor: none; }
+/* Phones: the address bar sliding in and out must not resize the canvas (a resize re-allocates every render target = a visible hitch mid-scroll). The canvas keeps the LARGE viewport height; the HUD stays on the visible one. */
+@media (pointer: coarse) { @supports (height: 100lvh) { .engine-fixed { bottom: auto; height: 100lvh; } } }
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }

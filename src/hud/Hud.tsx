@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type TouchEvent as RTouchEvent } from 'react'
+import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from 'react'
 import { useStore, st } from '@/engine/store'
 import { ranges, getObject, type Beat } from '@/engine/journey'
 import { cam } from '@/engine/world'
@@ -9,8 +9,7 @@ import { groupOf, neighbour } from '@/engine/focusGroups'
 import { infoFor } from '@/lib/focusData'
 import { MOON_SPEEDUP } from '@/zones/solar/satellites'
 import { SPIN_SPEEDUP } from '@/zones/solar/bodies'
-import { setMotion, lock, unlock } from '@/engine/scroll'
-import { sound, setSound, subscribeSound, soundSnapshot } from '@/lib/audio/sound'
+import { setMotion } from '@/engine/scroll'
 import { setPref, needsReload, resolveSettings, type TierPref } from '@/engine/quality'
 import { formatLength } from '@/lib/scale'
 
@@ -31,23 +30,11 @@ export function LoadingScreen() {
   const label = useStore((s) => s.progressLabel)
   const error = useStore((s) => s.error)
   const [gone, setGone] = useState(false)
-  // Sound on from the first moment. Browsers (iPhone above all) only let audio start from a real tap, never from a scroll. So when the journey is
-  // ready and the sound could not start by itself, the loading screen waits for ONE tap (which starts the sound) and then lifts as before.
-  useSyncExternalStore(subscribeSound, soundSnapshot)
+  // The journey starts by itself as soon as everything is loaded: no tap is needed. Sound starts on its own where the browser allows it,
+  // otherwise on the person's first scroll / touch / key (see installSound in lib/audio/sound.ts).
   const [checked, setChecked] = useState(false)
-  const [tapped, setTapped] = useState(false)
-  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setChecked(true), 450); return () => clearTimeout(t) } }, [phase]) // autoplaySound() has had its turn
-  const needsTap = sound.wanted && !sound.playing && typeof navigator !== 'undefined' && !navigator.webdriver
-  const waiting = phase === 'ready' && (!checked || (needsTap && !tapped))
-  const go = phase === 'ready' && !waiting
-  useEffect(() => { if (phase === 'ready' && checked && needsTap && !tapped) { lock(); return () => unlock() } }, [phase, checked, needsTap, tapped])
-  const begin = () => { if (tapped) return; setSound(true); setTapped(true) }
-  useEffect(() => {
-    if (!(phase === 'ready' && checked && needsTap && !tapped)) return
-    const onKey = (e: KeyboardEvent) => { if (!e.ctrlKey && !e.metaKey && !e.altKey) begin() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [phase, checked, needsTap, tapped])
+  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setChecked(true), 150); return () => clearTimeout(t) } }, [phase])
+  const go = phase === 'ready' && checked
   useEffect(() => { if (go) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [go])
   // the opening sequence starts once the loading screen has begun to lift (see engine/intro.ts)
   useEffect(() => {
@@ -57,15 +44,13 @@ export function LoadingScreen() {
   }, [go])
   if (gone) return null
   const pct = Math.round(p * 100)
-  const askTap = phase === 'ready' && checked && needsTap && !tapped
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: go ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: go ? 'none' : 'auto', touchAction: 'none', cursor: askTap ? 'pointer' : undefined }} role="status" aria-live="polite"
-      onClick={askTap ? begin : undefined} onTouchEnd={askTap ? (e) => { if (e.cancelable) e.preventDefault(); begin() } : undefined}>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: go ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: go ? 'none' : 'auto', touchAction: 'none'}} role="status" aria-live="polite">
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,6vw,3.5rem)', letterSpacing: '0.3em' }}>ASTRA</div>
       <div className="mt-8 h-[2px] w-[min(320px,70vw)] overflow-hidden" style={{ background: 'var(--line)' }}>
         <div id="load-bar" style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .2s linear' }} />
       </div>
-      <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : askTap ? 'Tap to begin · sound on' : `${label} · ${pct}%`}</div>
+      <div className="hud-chip mt-4" data-testid="load-pct">{phase === 'error' ? `Error: ${error}` : `${label} · ${pct}%`}</div>
     </div>
   )
 }
@@ -387,7 +372,7 @@ export function GateOverlay() {
           {g.options.map((o, i) => (
             <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)}
               onTouchStart={down(o.id)} onTouchEnd={up(o.id)} onTouchCancel={up(o.id)}
-              className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)', touchAction: 'manipulation' }}>{o.label}</button>
+              className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)', touchAction: 'manipulation', minHeight: 46, minWidth: 120, WebkitTapHighlightColor: 'transparent' }}>{o.label}</button>
           ))}
         </div>
       </div>
