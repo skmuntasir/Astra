@@ -7,7 +7,7 @@ import { generateLunarDetail } from '@/lib/lunarDetail'
  */
 export const reliefWidth = (high: boolean) => (high ? 2048 : 1024)
 
-export function buildMoonRelief(albedo: ImageBitmap | HTMLCanvasElement, high: boolean, onProgress: (f: number) => void): Promise<THREE.DataTexture> {
+export function buildMoonRelief(albedo: ImageBitmap, high: boolean, onProgress: (f: number) => void): Promise<THREE.DataTexture> {
   return new Promise((resolve, reject) => {
     const lw = albedo.width
     const lh = albedo.height

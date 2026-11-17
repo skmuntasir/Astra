@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore, st } from '@/engine/store'
 import { ranges, getObject, type Beat } from '@/engine/journey'
 import { cam } from '@/engine/world'
@@ -30,22 +30,17 @@ export function LoadingScreen() {
   const label = useStore((s) => s.progressLabel)
   const error = useStore((s) => s.error)
   const [gone, setGone] = useState(false)
-  // The journey starts by itself as soon as everything is loaded: no tap is needed. Sound starts on its own where the browser allows it,
-  // otherwise on the person's first scroll / touch / key (see installSound in lib/audio/sound.ts).
-  const [checked, setChecked] = useState(false)
-  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setChecked(true), 150); return () => clearTimeout(t) } }, [phase])
-  const go = phase === 'ready' && checked
-  useEffect(() => { if (go) { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [go])
+  useEffect(() => { if (phase === 'ready') { const t = setTimeout(() => setGone(true), 900); return () => clearTimeout(t) } }, [phase])
   // the opening sequence starts once the loading screen has begun to lift (see engine/intro.ts)
   useEffect(() => {
-    if (!go) return
+    if (phase !== 'ready') return
     const h = setTimeout(startIntro, st().motion === 'reduced' ? 100 : 450)
     return () => clearTimeout(h)
-  }, [go])
+  }, [phase])
   if (gone) return null
   const pct = Math.round(p * 100)
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: go ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: go ? 'none' : 'auto', touchAction: 'none'}} role="status" aria-live="polite">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg)', opacity: phase === 'ready' ? 0 : 1, transition: 'opacity .8s ease', pointerEvents: phase === 'ready' ? 'none' : 'auto' }} role="status" aria-live="polite">
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,6vw,3.5rem)', letterSpacing: '0.3em' }}>ASTRA</div>
       <div className="mt-8 h-[2px] w-[min(320px,70vw)] overflow-hidden" style={{ background: 'var(--line)' }}>
         <div id="load-bar" style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .2s linear' }} />
@@ -130,7 +125,7 @@ export function Beats() {
         <div key={b.id} ref={(el) => { refs.current[i] = el }} data-beat={b.id} className={isLong(b) ? 'absolute px-11 sm:px-14' : 'absolute px-6 sm:px-14'}
           style={{ top: b.style === 'hero' ? '50%' : '58%', transform: 'translateY(-50%)', left: b.side === 'center' ? '50%' : 0, textAlign: b.side === 'center' ? 'center' : 'left', width: isLong(b) ? 'min(980px, 100%)' : 'min(640px, 100%)', marginLeft: b.side === 'center' ? (isLong(b) ? 'calc(min(980px,100%) / -2)' : 'calc(min(640px,100%) / -2)') : 0, visibility: 'hidden' }}>
           {b.kicker && <div className="hud-chip mb-3">{b.kicker}</div>}
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)', whiteSpace: b.id === 'hero' ? 'pre-line' : undefined }}>{b.id === 'hero' ? b.title.replace(/ (\S+)$/, '\n$1') : b.title /* the opening title always breaks before its last word ("WE ARE" / "HERE."), on a phone as on a big screen */}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)' }}>{b.title}</h2>
         </div>
       ))}
     </div>
@@ -350,29 +345,15 @@ export function FocusPanel() {
 export function GateOverlay() {
   const g = useStore((s) => s.gate)
   const first = useRef<HTMLButtonElement>(null)
-  const touch = useRef<{ id: string; x: number; y: number } | null>(null)
-  useEffect(() => { if (g) first.current?.focus({ preventScroll: true }) }, [g])
+  useEffect(() => { if (g) first.current?.focus() }, [g])
   if (!g) return null
-  // A finger acts on its own release. A tap that lands while the page is still gliding from the scroll can end as a touchcancel instead of a
-  // touchend, so a cancel with (almost) no movement counts as the tap too: one tap is enough. preventDefault stops the duplicate click.
-  const down = (id: string) => (e: RTouchEvent) => { const t = e.touches[0]; touch.current = t ? { id, x: t.clientX, y: t.clientY } : null }
-  const up = (id: string) => (e: RTouchEvent) => {
-    const start = touch.current
-    touch.current = null
-    const t = e.changedTouches[0]
-    if (start && t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 14) return // it was a drag, not a tap
-    if (e.cancelable) e.preventDefault()
-    choiceGate.choose(id)
-  }
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(2,3,10,.55)', touchAction: 'none' }} role="dialog" aria-modal="true" aria-labelledby="gate-title" data-testid="gate">
+    <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(2,3,10,.55)' }} role="dialog" aria-modal="true" aria-labelledby="gate-title" data-testid="gate">
       <div className="glass rounded-xl p-8 text-center max-sm:p-5" style={{ width: 'min(520px,90vw)' }}>
         <h2 id="gate-title" style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 'clamp(1.5rem,5vw,2rem)', margin: '0 0 22px' }}>{g.title}</h2>
         <div className="flex justify-center gap-3">
           {g.options.map((o, i) => (
-            <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)}
-              onTouchStart={down(o.id)} onTouchEnd={up(o.id)} onTouchCancel={up(o.id)}
-              className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)', touchAction: 'manipulation', minHeight: 46, minWidth: 120, WebkitTapHighlightColor: 'transparent' }}>{o.label}</button>
+            <button key={o.id} ref={i === 0 ? first : undefined} data-testid={`gate-${o.id}`} onClick={() => choiceGate.choose(o.id)} className="glass rounded px-5 py-2" style={{ fontFamily: 'var(--font-ui)' }}>{o.label}</button>
           ))}
         </div>
       </div>

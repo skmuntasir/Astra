@@ -4,7 +4,7 @@ import { timeline } from '@/engine/timeline'
 import { ranges, zoneAt } from '@/engine/journey'
 import { jumpToZone, jumpToT, focus } from '@/engine/api'
 import { lock, unlock, scrollToT } from '@/engine/scroll'
-import { installSound, autoplaySound, toggleSound, subscribeSound, soundSnapshot, feedMood, blip, sound } from '@/lib/audio/sound'
+import { installSound, toggleSound, subscribeSound, soundSnapshot, feedMood, blip, sound } from '@/lib/audio/sound'
 import { mk, moodAt, moodInfall } from '@/lib/audio/moods'
 import { hintPos } from './hint'
 import { menuRows, infallLine, infallBudget } from './zoneInfo'
@@ -47,8 +47,6 @@ export function SoundButton() {
 export function SoundFeed() {
   const focusId = useStore((s) => s.focusId)
   useEffect(() => installSound(), [])
-  const phase = useStore((s) => s.phase)
-  useEffect(() => { if (phase === 'ready') autoplaySound() }, [phase])
   useEffect(() => {
     const m = mk()
     const id = setInterval(() => {

@@ -133,21 +133,12 @@ export function BHBody() {
   )
 }
 
-const COARSE = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
-const settle = { y: -1, at: 0 }
 function watchGate(ap: { t0: number; t1: number }, T: number, tmp: { armed: boolean }) {
   const s = st()
   if (cam.override) return
   const local = (T - ap.t0) / (ap.t1 - ap.t0)
   if (local < 0.85) tmp.armed = true
   if (!tmp.armed || local < GATE_FROM || s.gate || s.focusPhase !== 'idle' || s.phase !== 'ready' || timeline.frozen) return
-  // On a touch screen the choice waits until the scroll glide has stopped (the pose is constant in this final hold, so nothing visible changes).
-  // A tap that lands on a gliding page is swallowed by iOS just to stop the glide, which is what made every choice need two taps.
-  if (COARSE()) {
-    const y = window.scrollY, now = performance.now()
-    if (y !== settle.y) { settle.y = y; settle.at = now }
-    if (now - settle.at < 250) return
-  }
   tmp.armed = false
   void choiceGate.open({
     id: 'bh-fall', title: 'Fall into the black hole?', note: 'Simulation · the fall uses a non-rotating simplification',

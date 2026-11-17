@@ -24,28 +24,6 @@ interface ManifestRow { file: string; bytes: number }
 
 const CACHE_NAME = 'astra-assets-v1'
 const MAX_DECODES = 3
-const NET_SLOTS = 10
-let netFree = NET_SLOTS
-const netWaiting: Array<() => void> = []
-const netAcquire = () => (netFree > 0 ? (netFree--, Promise.resolve()) : new Promise<void>((r) => netWaiting.push(r)))
-const netRelease = () => { const w = netWaiting.shift(); if (w) w(); else netFree++ }
-
-/** Decode an image off the main thread. Some Android WebViews / older Chrome refuse the createImageBitmap options: then decode with an <img> and flip it on a canvas (same orientation, so flipY stays false). */
-async function decodeImage(blob: Blob): Promise<ImageBitmap | HTMLCanvasElement> {
-  try { return await createImageBitmap(blob, { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' }) } catch { /* fall through */ }
-  const url = URL.createObjectURL(blob)
-  try {
-    const img = new Image()
-    img.src = url
-    await img.decode()
-    const cv = document.createElement('canvas')
-    cv.width = img.naturalWidth; cv.height = img.naturalHeight
-    const c = cv.getContext('2d')
-    if (!c) throw new Error('2d canvas unavailable')
-    c.translate(0, cv.height); c.scale(1, -1); c.drawImage(img, 0, 0)
-    return cv
-  } finally { URL.revokeObjectURL(url) }
-}
 
 const prog = { got: 0, total: 1, decoded: 0, count: 1, relief: 0 }
 let lastShown = 0
@@ -61,7 +39,7 @@ function paint() {
   report(lastShown, label)
 }
 
-interface Stage1 { tex: 'hi' | 'lo'; done: Promise<void>; bitmaps: Map<string, ImageBitmap | HTMLCanvasElement>; relief: THREE.DataTexture | null }
+interface Stage1 { tex: 'hi' | 'lo'; done: Promise<void>; bitmaps: Map<string, ImageBitmap>; relief: THREE.DataTexture | null }
 let stage1: Stage1 | null = null
 
 async function openCache(): Promise<Cache | null> {
@@ -104,35 +82,29 @@ async function run(s1: Stage1): Promise<void> {
     const key = sizes.has(url) ? `${url}?v=${sizes.get(url)}` : null
     let res: Response | undefined
     if (cache && key) { try { res = await cache.match(key) } catch { /* ignore */ } }
-    const fromNet = !res
-    if (fromNet) await netAcquire() // at most NET_SLOTS files in flight: ~60 parallel streams starve a weak phone's network and memory
-    let blob = new Blob()
-    try {
-      if (!res) {
-        res = await fetch(url)
-        if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`)
+    if (!res) {
+      res = await fetch(url)
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`)
+      if (cache && key) { const copy = res.clone(); void cache.put(key, copy).catch(() => { /* quota: fine, next visit refetches */ }) }
+    }
+    const expected = sizeOf(a)
+    const parts: BlobPart[] = []
+    let mine = 0
+    const reader = res.body?.getReader()
+    if (reader) {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        parts.push(value as BlobPart)
+        mine += value.length
+        prog.got += value.length
+        paint()
       }
-      const expected = sizeOf(a)
-      const parts: BlobPart[] = []
-      let mine = 0
-      const reader = res.body?.getReader()
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          parts.push(value as BlobPart)
-          mine += value.length
-          prog.got += value.length
-          paint()
-        }
-      } else {
-        const b = await res.blob(); parts.push(b); mine = b.size; prog.got += mine
-      }
-      prog.got += Math.max(0, expected - mine) // reconcile the estimate with reality
-      blob = new Blob(parts, { type: res.headers.get('content-type') ?? undefined })
-    } finally { if (fromNet) netRelease() }
-    // cache write AFTER the download, from the finished blob (Response.clone() tees the stream, and a cache write that fails early can stall the download on Chrome / Android)
-    if (fromNet && cache && key) void cache.put(key, new Response(blob, { headers: { 'content-type': blob.type } })).catch(() => { /* quota: fine, next visit refetches */ })
+    } else {
+      const b = await res.blob(); parts.push(b); mine = b.size; prog.got += mine
+    }
+    prog.got += Math.max(0, expected - mine) // reconcile the estimate with reality
+    const blob = new Blob(parts, { type: res.headers.get('content-type') ?? undefined })
     paint()
     // decode right away (does not wait for the other files)
     if (a.kind === 'data') {
@@ -140,7 +112,8 @@ async function run(s1: Stage1): Promise<void> {
     } else {
       await acquire()
       try {
-        s1.bitmaps.set(a.id, await decodeImage(blob))
+        const bmp = await createImageBitmap(blob, { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' })
+        s1.bitmaps.set(a.id, bmp)
       } finally { release() }
       // the Moon relief (CPU, time-sliced) starts as soon as its texture exists, in parallel with the remaining downloads
       if (a.id === 'moon-albedo') {

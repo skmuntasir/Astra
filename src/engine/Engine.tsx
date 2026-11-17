@@ -8,7 +8,7 @@ export function Engine({ extra }: { extra?: React.ReactNode }) {
   const dprCap = useStore((s) => s.settings.dprCap)
   const aa = useStore.getState().settings.antialias
   return (
-    <div className="fixed inset-0 engine-fixed" style={{ background: '#02030a' }} aria-hidden="true">
+    <div className="fixed inset-0" style={{ background: '#02030a' }} aria-hidden="true">
       <Canvas
         dpr={[1, dprCap]}
         frameloop="always"
