@@ -47,7 +47,7 @@ registerZone({
 
 registerZone({
   id: 'moon', title: 'The Moon', tick: 'Moon', budget: 250, unit: RE, scale: 'Earth–Moon scale',
-  objects: ['earth', 'moon', 'sun'], stillT: 0.9,
+  objects: ['earth', 'moon', 'sun'], stillT: 0.99,
   notes: ['Sizes true · Earth–Moon distance true · Sun placed 8× closer', NOTE_IMG, NOTE_SKY],
   camera: [
     { t: 0, target: [6, 0.5, 0], dist: 14, azim: 62, elev: 12, fov: 35 },

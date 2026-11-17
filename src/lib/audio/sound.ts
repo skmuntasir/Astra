@@ -32,8 +32,8 @@ export const subscribeSound = (l: Listener) => { listeners.add(l); return () => 
 export const soundSnapshot = () => `${sound.wanted ? 1 : 0}${sound.playing ? 1 : 0}`
 
 function readPref(): boolean {
-  try { const v = localStorage.getItem(SOUND_KEY); if (v === 'on') return true; if (v === 'off') return false } catch { /* storage blocked */ }
-  return true // sound is ON by default (a stored 'off' from the Sound button / M key is still respected)
+  // sound is ON at the start of every visit (a mute from the Sound button / M key lasts for the session; it is still written to storage but no longer carried into the next visit)
+  return true
 }
 function writePref(on: boolean) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch { /* storage blocked */ } }
 
