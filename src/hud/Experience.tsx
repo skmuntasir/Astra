@@ -31,14 +31,14 @@ export function SoundButton() {
   useSyncExternalStore(subscribeSound, soundSnapshot)
   const state = sound.playing ? 'on' : sound.wanted ? 'pending' : 'off' // pending = wanted, waiting for the first gesture (or for the tab to come back)
   return (
-    <button type="button" data-sound-button data-testid="sound" data-state={state} aria-pressed={state !== 'off'} aria-keyshortcuts="M"
-      aria-label="Ambient sound (M)" title={state === 'on' ? 'Mute (M)' : state === 'pending' ? 'Start the sound (M)' : 'Unmute (M)'}
+    <button type="button" data-sound-button data-testid="sound" data-state={state} aria-pressed={state === 'on'} aria-keyshortcuts="M"
+      aria-label="Ambient sound (M)" title={state === 'on' ? 'Mute (M)' : 'Unmute (M)'}
       onClick={toggleSound} className="hud-chip glass flex items-center gap-1.5 rounded px-2 py-1">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M4 9v6h4l5 4V5L8 9H4z" />
-        {state !== 'off' ? <><path d="M16.5 8.5a5 5 0 0 1 0 7" /><path d="M19 6a8.5 8.5 0 0 1 0 12" /></> : <path d="M17 9l5 6M22 9l-5 6" />}
+        {state === 'on' ? <><path d="M16.5 8.5a5 5 0 0 1 0 7" /><path d="M19 6a8.5 8.5 0 0 1 0 12" /></> : <path d="M17 9l5 6M22 9l-5 6" />}
       </svg>
-      <span>Sound<span className="hidden sm:inline">{state === 'off' ? ': off' : ': on'}</span></span>
+      <span>Sound<span className="hidden sm:inline">{state === 'on' ? ': on' : ': off'}</span></span>
     </button>
   )
 }

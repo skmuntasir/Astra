@@ -136,7 +136,7 @@ export function registerGalactic() {
   void axis; void side; void dLG
   registerZone({
     id: 'local-group', title: 'The Local Group', tick: 'Local Group', budget: 250, unit: MLY, origin: SUN_G, scale: 'Local Group scale',
-    objects: [...LG_SET, ...NEAR_SET], stillT: 0.64,
+    objects: [...LG_SET, ...NEAR_SET], stillT: 0.84, // menu landing: pulled back from 0.64 (~4.4 Mly) to ~7 Mly so the whole Local Group is in view
     notes: ['Galaxy positions and distances are real (to be re-checked); the pictures are procedural illustrations, not Hubble or Webb photographs.', 'Dwarf swarm: 44 real galaxies, a subset of the 80–100+ known.'],
     camera: lgKeys.map(conv(MLY)),
     beats: [
