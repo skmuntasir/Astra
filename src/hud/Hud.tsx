@@ -125,7 +125,7 @@ export function Beats() {
         <div key={b.id} ref={(el) => { refs.current[i] = el }} data-beat={b.id} className={isLong(b) ? 'absolute px-11 sm:px-14' : 'absolute px-6 sm:px-14'}
           style={{ top: b.style === 'hero' ? '50%' : '58%', transform: 'translateY(-50%)', left: b.side === 'center' ? '50%' : 0, textAlign: b.side === 'center' ? 'center' : 'left', width: isLong(b) ? 'min(980px, 100%)' : 'min(640px, 100%)', marginLeft: b.side === 'center' ? (isLong(b) ? 'calc(min(980px,100%) / -2)' : 'calc(min(640px,100%) / -2)') : 0, visibility: 'hidden' }}>
           {b.kicker && <div className="hud-chip mb-3">{b.kicker}</div>}
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)' }}>{b.title}</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: isLong(b) ? 1.15 : 1.05, fontSize: isLong(b) ? 'clamp(1.5rem,4.4vw,3.1rem)' : b.style === 'hero' ? 'clamp(2.6rem,8vw,6rem)' : 'clamp(1.5rem,3.4vw,2.4rem)', letterSpacing: isLong(b) ? '0.02em' : b.style === 'hero' ? '0.04em' : 0, textShadow: '0 2px 30px rgba(0,0,0,.7)' }}>{b.id === 'hero' ? <>WE ARE<br />HERE.</> : b.title}</h2>
         </div>
       ))}
     </div>

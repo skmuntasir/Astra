@@ -4,7 +4,7 @@ import { timeline } from '@/engine/timeline'
 import { ranges, zoneAt } from '@/engine/journey'
 import { jumpToZone, jumpToT, focus } from '@/engine/api'
 import { lock, unlock, scrollToT } from '@/engine/scroll'
-import { installSound, toggleSound, subscribeSound, soundSnapshot, feedMood, blip, sound } from '@/lib/audio/sound'
+import { installSound, autoStartSound, toggleSound, subscribeSound, soundSnapshot, feedMood, blip, sound } from '@/lib/audio/sound'
 import { mk, moodAt, moodInfall } from '@/lib/audio/moods'
 import { hintPos } from './hint'
 import { menuRows, infallLine, infallBudget } from './zoneInfo'
@@ -63,6 +63,8 @@ export function SoundFeed() {
     }, 500) // twice a second is plenty for a sound that glides over seconds (and the graph skips writes that did not change)
     return () => clearInterval(id)
   }, [])
+  const phase = useStore((s) => s.phase)
+  useEffect(() => { if (phase === 'ready') autoStartSound() }, [phase]) // sound starts right after loading
   useEffect(() => { if (focusId) blip() }, [focusId])
   return null
 }

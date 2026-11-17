@@ -5,8 +5,8 @@ import { mk, type Mood } from './moods'
  * Sound controller (no React, no engine imports). One singleton.
  *
  *  - The AudioContext is NEVER created before a user gesture: `start()` runs only from a click / tap / key press handler.
- *  - Preference (localStorage 'astra.sound' = 'on' | 'off', in try/catch). No stored value: on, except under prefers-reduced-motion where
- *    the default is off (the person has to turn it on). 'off' = muted: the first gesture does NOT start anything.
+ *  - Preference (localStorage 'astra.sound' = 'on' | 'off', in try/catch). No stored value: on (also under prefers-reduced-motion).
+ *    A stored 'off' is respected. 'off' = muted: the first gesture does NOT start anything.
  *  - Mute fades the master (no click) then suspends the context. A hidden tab suspends too and resumes on return (if wanted).
  *  - `feed()` is called a few times per second by the HUD; it only aims parameters (no allocation).
  */
@@ -31,10 +31,9 @@ const emit = () => listeners.forEach((l) => l())
 export const subscribeSound = (l: Listener) => { listeners.add(l); return () => { listeners.delete(l) } }
 export const soundSnapshot = () => `${sound.wanted ? 1 : 0}${sound.playing ? 1 : 0}`
 
-const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 function readPref(): boolean {
   try { const v = localStorage.getItem(SOUND_KEY); if (v === 'on') return true; if (v === 'off') return false } catch { /* storage blocked */ }
-  return !reduced()
+  return true // sound is ON by default (a stored 'off' from the Sound button / M key is still respected)
 }
 function writePref(on: boolean) { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off') } catch { /* storage blocked */ } }
 
@@ -112,6 +111,12 @@ export function blip() {
   sound.amb.blip(sound.ctx.currentTime)
 }
 
+/** Called once the loading screen is done: starts the sound without waiting for a click if the browser allows it.
+ *  If the browser blocks autoplay, the context stays suspended and the first tap / key press resumes it. */
+export function autoStartSound() {
+  if (sound.wanted && !sound.started) void start()
+}
+
 let installed = false
 /** Reads the preference and arms the first-gesture hook. Does NOT create an AudioContext. Returns a cleanup. */
 export function installSound(): () => void {
@@ -124,6 +129,7 @@ export function installSound(): () => void {
     if (t?.closest?.('[data-sound-button]')) return // the button handles its own click (it may be a mute)
     if (e instanceof KeyboardEvent && (e.key === 'm' || e.key === 'M' || e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta')) return
     if (sound.wanted && !sound.started) void start()
+    else if (sound.wanted && sound.started && sound.ctx && sound.ctx.state !== 'running') void sound.ctx.resume().catch(() => {}) // autoplay was blocked: the gesture unlocks it
   }
   const gestures: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'touchend', 'click']
   for (const g of gestures) window.addEventListener(g, onGesture, true)
