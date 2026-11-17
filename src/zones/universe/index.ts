@@ -69,7 +69,7 @@ export function registerUniverse() {
   ]
   registerZone({
     id: UNIVERSE_ID, title: 'The universe', tick: 'Universe', budget: 400, unit: GLY, origin: SUN_G, scale: 'Cosmic scale',
-    objects: ['gx-m87', 'gx-virgo', BH_ID, 'uni-web', 'uni-lan', 'uni-sphere'], stillT: 0.68, // menu landing: pulled back from 0.45 (900 Mly) to ~3 Gly so the cosmic web is seen whole
+    objects: ['gx-m87', 'gx-virgo', BH_ID, 'uni-web', 'uni-lan', 'uni-sphere'], stillT: 0.84, // menu landing: pulled back from 0.45 (900 Mly) to ~3 Gly so the cosmic web is seen whole
     notes: [TEXT.webNote, TEXT.cmbNote, TEXT.sphereNote], camera: keys, beats,
     framing: (l, aspect) => 1 + (portraitK(aspect) - 1) * sm(0.28, 0.42, l),
   })
